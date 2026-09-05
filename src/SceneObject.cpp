@@ -41,6 +41,11 @@ const Material& SceneObject::material() const {
     return *_material;
 }
 
+const StaticMesh& SceneObject::mesh() const {
+    DEBUG_ASSERT(_mesh);
+    return *_mesh;
+}
+
 void SceneObject::setTransform(const glm::mat4& tr) {
     _transform = tr;
 }

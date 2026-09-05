@@ -38,8 +38,13 @@ class Scene : NonMovable {
         void setSun(float altitude, float azimuth, glm::vec3 color = glm::vec3(1.0f));
 
     private:
+        void prepareObjects();
+
         std::vector<SceneObject> _objects;
         std::vector<PointLight> _pointLights;
+
+        std::vector<u32> _opaqueDraws;
+        std::vector<u32> _transparentDraws;
 
         glm::vec3 _sunDirection = glm::vec3(0.2f, 1.0f, 0.1f);
         glm::vec3 _sunColor = glm::vec3(1.0f);

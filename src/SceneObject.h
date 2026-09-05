@@ -20,6 +20,7 @@ class SceneObject {
         void render(const Program& program, const RasterState& raster) const;
 
         const Material& material() const;
+        const StaticMesh& mesh() const;
 
         void setTransform(const glm::mat4& tr);
         const glm::mat4& transform() const;

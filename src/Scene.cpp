@@ -1,6 +1,9 @@
 #include "Scene.h"
 
 #include "VkContext.h"
+#include "ThreadPool.h"
+
+#include <algorithm>
 
 namespace nebula {
 
@@ -55,6 +58,65 @@ void Scene::setSun(float altitude, float azimuth, glm::vec3 color) {
     _sunColor = color;
 }
 
+void Scene::prepareObjects() {
+    const u32 count = u32(_objects.size());
+    const Frustum frustum = _camera.buildFrustum();
+
+    std::vector<Sphere> boundsWs(count);
+    std::vector<u8> visible(count);
+
+    parallelFor(count, [&](u32 i) {
+        boundsWs[i] = _objects[i].computeBoundingSphereWs();
+        visible[i] = frustumSphereIntersection(frustum, boundsWs[i]) ? 1u : 0u;
+    });
+
+    _opaqueDraws.clear();
+    _transparentDraws.clear();
+    _opaqueDraws.reserve(count);
+    _transparentDraws.reserve(count);
+
+    for(u32 i = 0; i != count; ++i) {
+        if(!visible[i]) {
+            continue;
+        }
+        if(_objects[i].material().isOpaque()) {
+            _opaqueDraws.push_back(i);
+        } else {
+            _transparentDraws.push_back(i);
+        }
+    }
+
+    // Group by pipeline, then material (descriptors), then mesh (VBO/IBO).
+    std::sort(_opaqueDraws.begin(), _opaqueDraws.end(), [this](u32 a, u32 b) {
+        const SceneObject& oa = _objects[a];
+        const SceneObject& ob = _objects[b];
+        const Program* pa = &oa.material().program();
+        const Program* pb = &ob.material().program();
+        if(pa != pb) {
+            return pa < pb;
+        }
+        const Material* ma = &oa.material();
+        const Material* mb = &ob.material();
+        if(ma != mb) {
+            return ma < mb;
+        }
+        return &oa.mesh() < &ob.mesh();
+    });
+
+    // Back-to-front so alpha blending composites correctly.
+    const glm::vec3 camPos = _camera.position();
+    std::sort(_transparentDraws.begin(), _transparentDraws.end(), [&](u32 a, u32 b) {
+        const glm::vec3 da = boundsWs[a]._center - camPos;
+        const glm::vec3 db = boundsWs[b]._center - camPos;
+        const float distA = glm::dot(da, da);
+        const float distB = glm::dot(db, db);
+        if(distA != distB) {
+            return distA > distB;
+        }
+        return a < b;
+    });
+}
+
 void Scene::prepareFrame() {
     // Recreated each frame; ~ByteBuffer defers GPU free until this frame's fence
     _frameUbo = TypedBuffer<shader::FrameData>(nullptr, 1);
@@ -92,21 +154,15 @@ void Scene::prepareFrame() {
         .env = _envmap.get(),
         .brdf = &brdfLut(),
     });
+
+    prepareObjects();
 }
 
 void Scene::renderDepth() const {
     DEBUG_ASSERT(_frameUbo.vkBuffer() && _depthProgram && _depthAlphaTestProgram);
 
-    // Draw opaque objects
-    const Frustum frustum = _camera.buildFrustum();
-    for(const SceneObject& obj : _objects) {
-        if(!obj.material().isOpaque()) {
-            continue;
-        }
-        // Frustum culling
-        if(!frustumSphereIntersection(frustum, obj.computeBoundingSphereWs())) {
-            continue;
-        }
+    for(const u32 i : _opaqueDraws) {
+        const SceneObject& obj = _objects[i];
 
         RasterState raster = obj.material().rasterState();
         raster.alphaBlend = false;
@@ -125,17 +181,8 @@ void Scene::renderDepth() const {
 void Scene::render() {
     DEBUG_ASSERT(_frameUbo.vkBuffer());
 
-    const Frustum frustum = _camera.buildFrustum();
-
-    // Draw opaque objects
-    for(const SceneObject& obj : _objects) {
-        if(obj.material().isOpaque()) {
-            continue;
-        }
-        // Frustum culling
-        if(!frustumSphereIntersection(frustum, obj.computeBoundingSphereWs())) {
-            continue;
-        }
+    for(const u32 i : _opaqueDraws) {
+        const SceneObject& obj = _objects[i];
         // Override the depth state. Depth is already written by the z-prepass.
         RasterState raster = obj.material().rasterState();
         raster.depthTestEnable = true;
@@ -158,16 +205,8 @@ void Scene::render() {
         drawFullscreen(_skyMaterial.program(), raster, _skyMaterial.passResources(), push);
     }
 
-    // Draw transparent objects
-    for(const SceneObject& obj : _objects) {
-        if(!obj.material().isOpaque()) {
-            continue;
-        }
-        // Frustum culling
-        if(!frustumSphereIntersection(frustum, obj.computeBoundingSphereWs())) {
-            continue;
-        }
-        obj.render();
+    for(const u32 i : _transparentDraws) {
+        _objects[i].render();
     }
 
     // Release this frame's UBOs so ~ByteBuffer queues them on this frame's fence.

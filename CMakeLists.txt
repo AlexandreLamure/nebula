@@ -15,6 +15,8 @@ endif()
 
 # setup external libraries
 
+find_package(Threads REQUIRED)
+
 # Vulkan
 find_package(Vulkan REQUIRED)
 if(NOT Vulkan_FOUND)
@@ -72,7 +74,7 @@ set_source_files_properties(${SHADER_FILES} PROPERTIES HEADER_FILE_ONLY TRUE)
 
 
 add_executable(nebula ${SOURCE_FILES} ${EXTERNAL_FILES} ${SHADER_FILES})
-target_link_libraries(nebula glfw)
+target_link_libraries(nebula glfw Threads::Threads)
 target_compile_options(nebula PUBLIC ${COMPILE_OPTIONS})
 
 # Bake absolute paths so they do not depend on cwd or build-dir layout.
