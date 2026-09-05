@@ -17,6 +17,7 @@ class SceneObject {
         SceneObject(std::shared_ptr<StaticMesh> mesh = nullptr, std::shared_ptr<Material> material = nullptr);
 
         void render() const;
+        void render(const Program& program, const RasterState& raster) const;
 
         const Material& material() const;
 

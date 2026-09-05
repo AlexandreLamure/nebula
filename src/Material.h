@@ -33,6 +33,7 @@ class Material {
         void setTexture(u32 slot, std::shared_ptr<Texture> tex);
 
         bool isOpaque() const;
+        bool isAlphaTested() const;
 
         void setStoredUniform(u32 nameHash, UniformValue value);
 
@@ -51,6 +52,7 @@ class Material {
         BlendMode _blendMode = BlendMode::None;
         DepthTestMode _depthTestMode = DepthTestMode::Standard;
         bool _doubleSided = false;
+        bool _alphaTested = false;
 };
 
 }

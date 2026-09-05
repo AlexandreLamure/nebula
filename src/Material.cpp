@@ -35,6 +35,10 @@ bool Material::isOpaque() const {
     return _blendMode == BlendMode::None;
 }
 
+bool Material::isAlphaTested() const {
+    return _alphaTested;
+}
+
 void Material::setStoredUniform(u32 nameHash, UniformValue value) {
     for(auto& [h, v] : _uniforms) {
         if(h == nameHash) {
@@ -58,21 +62,25 @@ RasterState Material::rasterState() const {
     switch(_depthTestMode) {
         case DepthTestMode::None:
             raster.depthTestEnable = false;
+            raster.depthWriteEnable = false;
             break;
 
         case DepthTestMode::Equal:
             raster.depthTestEnable = true;
+            raster.depthWriteEnable = false;
             raster.depthCompareOp = VK_COMPARE_OP_EQUAL;
             break;
 
         case DepthTestMode::Standard:
             raster.depthTestEnable = true;
+            raster.depthWriteEnable = true;
             // Reverse-Z: nearer fragments have *greater* depth.
             raster.depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
             break;
 
         case DepthTestMode::Reversed:
             raster.depthTestEnable = true;
+            raster.depthWriteEnable = true;
             raster.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
             break;
     }
@@ -103,6 +111,7 @@ Material Material::texturedPbrMaterial(bool alphaTest) {
 
     const char* frag = alphaTest ? "lit_ALPHA_TEST.slang" : "lit.slang";
     material._program = Program::fromFiles("basic.slang", frag);
+    material._alphaTested = alphaTest;
 
     material.setTexture(0u, defaultWhiteTexture());
     material.setTexture(1u, defaultNormalTexture());

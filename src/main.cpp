@@ -418,8 +418,13 @@ int main() {
         {
             PROFILE_GPU("Frame");
 
-            // Render the scene
-            RenderPass(&renderer.depthTexture, std::array{&renderer.litHdrTexture}, true, true, "Main pass", [&] {
+            scene->prepareFrame();
+
+            RenderPass(&renderer.depthTexture, true, "Z-prepass", [&] {
+                scene->renderDepth();
+            });
+
+            RenderPass(&renderer.depthTexture, std::array{&renderer.litHdrTexture}, false, true, "Main pass", [&] {
                 scene->render();
             });
 

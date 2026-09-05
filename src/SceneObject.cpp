@@ -15,12 +15,19 @@ void SceneObject::render() const {
     if(!_material || !_mesh) {
         return;
     }
+    render(_material->program(), _material->rasterState());
+}
+
+void SceneObject::render(const Program& program, const RasterState& raster) const {
+    if(!_material || !_mesh) {
+        return;
+    }
 
     PushConstants push = _material->buildPushConstants();
     push.set(HASH("model"), transform());
     drawMesh(
-        _material->program(),
-        _material->rasterState(),
+        program,
+        raster,
         _material->passResources(),
         push,
         _mesh->vertexBuffer(),

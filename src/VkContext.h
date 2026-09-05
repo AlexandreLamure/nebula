@@ -56,10 +56,11 @@ struct InFlightFrame {
     VkDescriptorSet frameDescriptorSet = VK_NULL_HANDLE;
 };
 
-// Explicit per-draw raster intent (depth/cull are dynamic; blend selects a pipeline variant).
+// Explicit per-draw raster intent (depth/cull/write are dynamic; blend selects a pipeline variant).
 struct RasterState {
     bool alphaBlend = false;
     bool depthTestEnable = true;
+    bool depthWriteEnable = true;
     VkCompareOp depthCompareOp = VK_COMPARE_OP_GREATER_OR_EQUAL;
     VkCullModeFlags cullMode = VK_CULL_MODE_BACK_BIT;
 };

@@ -206,10 +206,11 @@ static VkPipeline createGraphicsPipeline(VkShaderModule vert, VkShaderModule fra
         .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
                         | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
     };
+    const bool depthOnly = (ctx().renderingColorFormat == VK_FORMAT_UNDEFINED);
     const VkPipelineColorBlendStateCreateInfo colorBlend{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
-        .attachmentCount = 1,
-        .pAttachments = &blendAttachment,
+        .attachmentCount = depthOnly ? 0u : 1u,
+        .pAttachments = depthOnly ? nullptr : &blendAttachment,
     };
 
     const VkDynamicState dynamicStates[] = {
@@ -217,18 +218,19 @@ static VkPipeline createGraphicsPipeline(VkShaderModule vert, VkShaderModule fra
         VK_DYNAMIC_STATE_SCISSOR,
         VK_DYNAMIC_STATE_CULL_MODE,
         VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
+        VK_DYNAMIC_STATE_DEPTH_WRITE_ENABLE,
         VK_DYNAMIC_STATE_DEPTH_COMPARE_OP,
     };
     const VkPipelineDynamicStateCreateInfo dynamic{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .dynamicStateCount = 5,
+        .dynamicStateCount = 6,
         .pDynamicStates = dynamicStates,
     };
 
     const VkPipelineRenderingCreateInfo rendering{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
-        .colorAttachmentCount = 1,
-        .pColorAttachmentFormats = &ctx().renderingColorFormat,
+        .colorAttachmentCount = depthOnly ? 0u : 1u,
+        .pColorAttachmentFormats = depthOnly ? nullptr : &ctx().renderingColorFormat,
         .depthAttachmentFormat = ctx().renderingDepthFormat,
     };
 
@@ -354,6 +356,7 @@ void Program::bindGraphics(const RasterState& raster, VertexLayout layout, const
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, getOrCreatePipeline(raster.alphaBlend, layout));
     vkCmdSetCullMode(cmd, raster.cullMode);
     vkCmdSetDepthTestEnable(cmd, raster.depthTestEnable ? VK_TRUE : VK_FALSE);
+    vkCmdSetDepthWriteEnable(cmd, raster.depthWriteEnable ? VK_TRUE : VK_FALSE);
     vkCmdSetDepthCompareOp(cmd, raster.depthCompareOp);
 
     if(ctx().pipelineLayout) {

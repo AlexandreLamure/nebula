@@ -4,6 +4,8 @@
 #include <SceneObject.h>
 #include <PointLight.h>
 #include <Camera.h>
+#include <TypedBuffer.h>
+#include <shaderStructs.h>
 
 #include <vector>
 #include <memory>
@@ -17,7 +19,9 @@ class Scene : NonMovable {
 
         static Result<std::unique_ptr<Scene>> fromGltf(const std::string& fileName);
 
-        void render() const;
+        void prepareFrame();
+        void renderDepth() const;
+        void render();
 
         void addObject(SceneObject obj);
         void addLight(PointLight obj);
@@ -43,6 +47,11 @@ class Scene : NonMovable {
         std::shared_ptr<Texture> _envmap;
         float _iblIntensity = 1.0f;
         Material _skyMaterial;
+        std::shared_ptr<Program> _depthProgram;
+        std::shared_ptr<Program> _depthAlphaTestProgram;
+
+        TypedBuffer<shader::FrameData> _frameUbo;
+        TypedBuffer<shader::PointLight> _lightBuffer;
 
         Camera _camera;
 };
