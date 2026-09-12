@@ -11,6 +11,7 @@
 
 namespace nebula {
 
+// FIXME: find something less ugly
 static_assert(offsetof(PushConstants, model) == 0);
 static_assert(offsetof(PushConstants, baseColorFactor) == 64);
 static_assert(offsetof(PushConstants, alphaCutoff) == 76);
